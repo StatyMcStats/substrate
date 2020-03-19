@@ -155,7 +155,10 @@ use sp_std::prelude::*;
 use sp_std::{result, convert::TryFrom};
 use sp_runtime::{
 	RuntimeDebug, DispatchResult,
-	traits::{Zero, Bounded, CheckedMul, CheckedDiv, EnsureOrigin, Hash, Dispatchable, Saturating},
+	traits::{
+		Zero, Bounded, CheckedMul, CheckedDiv, EnsureOrigin, Hash, Dispatchable, Saturating,
+		Dispatcher,
+	},
 };
 use codec::{Ref, Encode, Decode, Input, Output};
 use frame_support::{
@@ -366,6 +369,9 @@ pub trait Trait: frame_system::Trait + Sized {
 
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
 	type Slash: OnUnbalanced<NegativeImbalanceOf<Self>>;
+
+	/// The means of dispatching the proposals.
+	type Dispatcher: Dispatcher<Self::Proposal, Self::Origin>;
 }
 
 /// Info regarding an ongoing referendum.
@@ -1394,7 +1400,11 @@ impl<T: Trait> Module<T> {
 				let _ = T::Currency::unreserve(&who, amount);
 				Self::deposit_event(RawEvent::PreimageUsed(proposal_hash, who, amount));
 
-				let ok = proposal.dispatch(frame_system::RawOrigin::Root.into()).is_ok();
+				let ok = T::Dispatcher::dispatch(
+					proposal,
+					frame_system::RawOrigin::Root.into()
+				)
+				.is_ok();
 				Self::deposit_event(RawEvent::Executed(index, ok));
 
 				Ok(())
@@ -1609,6 +1619,7 @@ mod tests {
 		type AccountData = pallet_balances::AccountData<u64>;
 		type OnNewAccount = ();
 		type OnKilledAccount = ();
+		type RootDispatcher = ();
 	}
 	parameter_types! {
 		pub const ExistentialDeposit: u64 = 1;
@@ -1666,6 +1677,7 @@ mod tests {
 		type CooloffPeriod = CooloffPeriod;
 		type PreimageByteDeposit = PreimageByteDeposit;
 		type Slash = ();
+		type Dispatcher = sp_runtime::SimpleDispatcher;
 	}
 
 	fn new_test_ext() -> sp_io::TestExternalities {

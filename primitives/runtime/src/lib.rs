@@ -685,6 +685,22 @@ pub fn print(print: impl traits::Printable) {
 	print.print();
 }
 
+/// A simple dispatcher that dispatches a `Dispatchable` and nothing else.
+pub struct SimpleDispatcher;
+
+impl<D, O> traits::RootDispatcher<D, O> for SimpleDispatcher where
+	D: traits::Dispatchable<Origin = O>
+{
+	fn dispatch(
+		dispatchable: D,
+		origin: O,
+		token: traits::Unconstructable<traits::DispatcherToken>
+	) -> DispatchResult
+	{
+		Self::raw_dispatch(dispatchable, origin, token)
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
